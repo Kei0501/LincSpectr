@@ -3,6 +3,9 @@ import numpy as np
 from pynwb import NWBHDF5IO
 from commons import get_time_voltage_current_currindex0
 from ssqueezepy import ssq_cwt
+import pandas as pd
+import torch
+import umap
 
 def collact_filename(path):
   folders = glob.glob(path)
@@ -62,8 +65,8 @@ def transform_efeatures(save_path, pick_voltage=30, set_timeax=128, set_freqax=1
           continue
 
 
-def make_features(adata, path, extract_part):
-  cells = pd.Series(glob.glob(path)).str.extract(extract_part).iloc[:,0].values
+def make_features(adata, data_path, file_path, extract_part):
+  cells = pd.Series(glob.glob(data_path)).str.extract(extract_part).iloc[:,0].values
   delete_cells = []
   for cell in cells:
       if (cell in adata.obs_names) == True:
@@ -73,7 +76,7 @@ def make_features(adata, path, extract_part):
 
   cell_id = []
   for i in range(len(delete_cells)):
-      cell_id.append('./data_for_VAE/' + delete_cells[i] + '.npy')
+      cell_id.append(file_path + delete_cells[i] + '.npy')
   return(count_mat, cell_id)
 
 
