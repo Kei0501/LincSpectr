@@ -185,3 +185,13 @@ class Distributor(nn.Module):
         best_z = self.softmax(calc_z3)
         best_ez = val_ez_train.T @ best_z
         return  best_ez
+
+
+def LincSpectr(tfeatures):
+    qz_mu, qz_logvar = t_model.enc_z(tfeatures)
+    qz_logvar = t_model.softplus(qz_logvar)
+    qz = dist.Normal(qz_mu, qz_logvar)
+    z_t = qz.rsample()
+    z_e = linkz_model.inference(z_t)
+    e_img = e_model.dec_z2x(z_e)
+    return(e_img)
