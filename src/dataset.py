@@ -22,7 +22,7 @@ class VaeDataSet(torch.utils.data.Dataset):
         return (img-img.min())/(img.max()-img.min())
 
 
-class zDataSet(torch.utils.data.Dataset):
+class ZDataSet(torch.utils.data.Dataset):
     def __init__(self,x,xcell_id,transform=None,pre_transform=None):
         self.x = x
         self.xcell_id = xcell_id
