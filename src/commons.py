@@ -16,5 +16,10 @@ def get_time_voltage_current_currindex0(nwb):
     voltage[:, curr_index_0] = df.loc[curr_index_0*2][0][0].data[:]    # Find voltage trace for 0 current stimulation
     return time, voltage, current, curr_index_0
 
+def plot_volatge(voltage):
+    plt.plot(voltage[:,pick_voltage])    
+    plt.gca().spines['right'].set_visible(False)
+    plt.gca().spines['top'].set_visible(False)    
+    plt.show
 
 
