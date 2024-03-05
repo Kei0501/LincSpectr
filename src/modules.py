@@ -188,10 +188,10 @@ class Distributor(nn.Module):
 
 
 def LincSpectr(tfeatures):
-    qz_mu, qz_logvar = t_model.enc_z(tfeatures)
-    qz_logvar = t_model.softplus(qz_logvar)
+    qz_mu, qz_logvar = tscVAE.enc_z(tfeatures)
+    qz_logvar = tscVAE.softplus(qz_logvar)
     qz = dist.Normal(qz_mu, qz_logvar)
     z_t = qz.rsample()
-    z_e = linkz_model.inference(z_t)
-    e_img = e_model.dec_z2x(z_e)
-    return(e_img)
+    z_e = linker.inference(z_t)
+    efeatures = escVAE.dec_z2x(z_e)
+    return(efeatures)
