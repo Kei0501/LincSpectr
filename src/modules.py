@@ -67,14 +67,14 @@ class TDecoder(nn.Module):
         return(correct_ld)
 
 
-class tscVAE(nn.Module):
+class TscVAE(nn.Module):
     def __init__(
             self,
             x_dim, xz_dim, #i_dimになってた
             enc_z_h_dim, dec_z_h_dim,
             num_enc_z_layers,
             num_dec_z_layers, **kwargs):
-        super(tscVAE, self).__init__()
+        super(TscVAE, self).__init__()
         self.enc_z = TEncoder(num_enc_z_layers, x_dim, enc_z_h_dim, xz_dim)
         self.dec_z2x = TDecoder(num_enc_z_layers, xz_dim, dec_z_h_dim, x_dim)
         self.softplus = nn.Softplus()
@@ -134,14 +134,14 @@ class EDecoder(nn.Module):
         return(e_feature)
 
 
-class escVAE(nn.Module):
+class EscVAE(nn.Module):
     def __init__(
             self,
             i_dim, xz_dim,
             enc_z_h_dim, dec_z_h_dim,
             num_enc_z_layers,
             num_dec_z_layers, **kwargs):
-        super(escVAE, self).__init__()
+        super(EscVAE, self).__init__()
         self.enc_z = EEncoder(num_enc_z_layers, i_dim, enc_z_h_dim, xz_dim)
         self.dec_z2x = EDecoder(num_enc_z_layers, xz_dim, dec_z_h_dim, i_dim)
         self.softplus = nn.Softplus()
