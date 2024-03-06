@@ -155,6 +155,32 @@ def average_expression(adata, cell_type):
   return(avr_express)
 
 
+def inverse_analysis(avr_express, N, image_shape, pick_num=0):
+  image_size = image_shape[0] * image_shape[1]
+  I_use = torch.eye(image_size,image_size)
+  _, fn_vjp = vjp(lambda vx:LincSpectr(vx), avr_express)
+  jacobian_mat, = vmap(fn_vjp)(I_use)
+  u, s, vh = torch.linalg.svd(jacobian_mat)
+  u_pick = u[:,pick_num]
+  vT = torch.conj(vh)
+  v_pick = vT[pick_num]
+  v_pick = v_pick.to('cpu').detach().numpy().copy()
+  top_genes = []
+  for i in range(N):
+      j = i + 1
+      gene_pos_number = np.where(v_pick==np.sort(v_pick)[-j])[0][0]
+      top_genename = adata[adata.obs_names,adata.var.highly_variable].var_names[gene_pos_number]
+      top_genes.append(top_genename)
+  return(u_pick, v_pick, top_genes)
+
+
+def make_umap(z, n_neighbors=15, min_dist=0.01):
+  reducer = umap.UMAP(n_neighbors,min_dist)
+  embedding = reducer.fit_transform(z.cpu().detach().numpy())
+  sns.scatterplot(x = embedding[:,0],y = embedding[:,1],hue=adata.obs['RNA family'])
+  plt.legend(loc='upper left',bbox_to_anchor=(1.0,1.0))
+
+
 def calc_lpips(adata, validlist, path, sample_path):  
   loss_fn_alex = lpips.LPIPS(net='alex')
   vae_list, baseline_list = [], []
@@ -177,25 +203,6 @@ def calc_lpips(adata, validlist, path, sample_path):
   return(vae_list, baseline_list)
 
 
-def inverse_analysis(avr_express, N, image_shape, pick_num=0):
-  image_size = image_shape[0] * image_shape[1]
-  I_use = torch.eye(image_size,image_size)
-  _, fn_vjp = vjp(lambda vx:LincSpectr(vx), avr_express)
-  jacobian_mat, = vmap(fn_vjp)(I_use)
-  u, s, vh = torch.linalg.svd(jacobian_mat)
-  u_pick = u[:,pick_num]
-  vT = torch.conj(vh)
-  v_pick = vT[pick_num]
-  v_pick = v_pick.to('cpu').detach().numpy().copy()
-  top_genes = []
-  for i in range(N):
-      j = i + 1
-      gene_pos_number = np.where(v_pick==np.sort(v_pick)[-j])[0][0]
-      top_genename = adata[adata.obs_names,adata.var.highly_variable].var_names[gene_pos_number]
-      top_genes.append(top_genename)
-  return(u_pick, v_pick, top_genes)
-
-
 def kmeans_cluster(embedding):
   cluster_data = pd.DataFrame(embedding)
   km = KMeans(n_clusters=7, max_iter=30)
@@ -204,10 +211,3 @@ def kmeans_cluster(embedding):
   for i in np.sort(cluster_data['kmh'].unique()):
       plt.scatter(cluster_data[cluster_data['kmh']==i][0], cluster_data[cluster_data['kmh']==i][1], label=f'cluster{i}')
   plt.legend()
-
-
-def make_umap(z, n_neighbors=15, min_dist=0.01):
-  reducer = umap.UMAP(n_neighbors,min_dist)
-  embedding = reducer.fit_transform(z.cpu().detach().numpy())
-  sns.scatterplot(x = embedding[:,0],y = embedding[:,1],hue=adata.obs['RNA family'])
-  plt.legend(loc='upper left',bbox_to_anchor=(1.0,1.0))
