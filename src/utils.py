@@ -30,7 +30,24 @@ def collect_cellname(file_names):
   return(cell_list)
 
 
-def transform_efeatures(save_path, pick_voltage=30, set_timeax=128, set_freqax=128, set_parameter=1131):
+def get_time_voltage_current_currindex0(nwb):
+    df = nwb.sweep_table.to_dataframe()
+    voltage = np.zeros((len(df['series'][0][0].data[:]), int((df.shape[0]+1)/2)))
+    time = np.arange(len(df['series'][0][0].data[:]))/df['series'][0][0].rate
+    voltage[:, 0] = df['series'][0][0].data[:]
+    current_initial = df['series'][1][0].data[12000]*df['series'][1][0].conversion
+    curr_index_0 = int(-current_initial/20) # index of zero current stimulation
+    current = np.linspace(current_initial, (int((df.shape[0]+1)/2)-1)*20+current_initial, \
+                         int((df.shape[0]+1)/2))
+    for i in range(curr_index_0):   # Find all voltage traces from minimum to 0 current stimulation
+        voltage[:, i+1] = df['series'][0::2][(i+1)*2][0].data[:]
+    for i in range(curr_index_0, int((df.shape[0]+1)/2)-1):   # Find all voltage traces from 0 to highest current stimulation
+        voltage[:, i+1] = df['series'][1::2][i*2+1][0].data[:]
+    voltage[:, curr_index_0] = df.loc[curr_index_0*2][0][0].data[:]    # Find voltage trace for 0 current stimulation
+    return time, voltage, current, curr_index_0
+
+
+def transform_efeatures(save_path, pick_voltage=30, set_timeax=128, set_freqax=128, set_parameter=1131, cut_freq=230, start_frame=75, end_frame=20000):
   warnings.filterwarnings("ignore") # It complains about some namespaces, but it should work.
   io_ = NWBHDF5IO(file_names[set_parameter], 'r', load_namespaces=True)
   nwb = io_.read()
@@ -54,14 +71,14 @@ def transform_efeatures(save_path, pick_voltage=30, set_timeax=128, set_freqax=1
         
           except_freq = []
           for j in range(len(search_outlier)):
-              if (search_outlier[j] > limit_high and j>230) or (search_outlier[j] < limit_low and j>230):
+              if (search_outlier[j] > limit_high and j>cut_freq) or (search_outlier[j] < limit_low and j>cut_freq):
                   except_freq.append(j)
           pick_freq = np.zeros(len(search_outlier))
           np.put(pick_freq,except_freq,1)
           delete_freq = search_outlier * pick_freq
           delete_array = np.tile(delete_freq,(image_length,1)).T
           picked_outcome = image_outcome - delete_array
-          processed_outcome = picked_outcome[75:,:20000]
+          processed_outcome = picked_outcome[start_frame:,:end_frame]
           resized_outcome = np.array(Image.fromarray(processed_outcome).resize((set_timeax,set_freqax)))
           np.save(save_path + cell_list[i] + '.npy', resized_outcome)
   
@@ -77,41 +94,10 @@ def make_features(adata, data_path, file_path, extract_part):
           delete_cells.append(cell)
   adata = adata[delete_cells]
   count_mat = torch.Tensor(adata[adata.obs_names,adata.var.highly_variable].layers['count'].toarray())
-
   cell_id = []
   for i in range(len(delete_cells)):
       cell_id.append(file_path + delete_cells[i] + '.npy')
   return(count_mat, cell_id)
-
-
-def get_time_voltage_current_currindex0(nwb):
-    df = nwb.sweep_table.to_dataframe()
-    voltage = np.zeros((len(df['series'][0][0].data[:]), int((df.shape[0]+1)/2)))
-    time = np.arange(len(df['series'][0][0].data[:]))/df['series'][0][0].rate
-    voltage[:, 0] = df['series'][0][0].data[:]
-    current_initial = df['series'][1][0].data[12000]*df['series'][1][0].conversion
-    curr_index_0 = int(-current_initial/20) # index of zero current stimulation
-    current = np.linspace(current_initial, (int((df.shape[0]+1)/2)-1)*20+current_initial, \
-                         int((df.shape[0]+1)/2))
-    for i in range(curr_index_0):   # Find all voltage traces from minimum to 0 current stimulation
-        voltage[:, i+1] = df['series'][0::2][(i+1)*2][0].data[:]
-    for i in range(curr_index_0, int((df.shape[0]+1)/2)-1):   # Find all voltage traces from 0 to highest current stimulation
-        voltage[:, i+1] = df['series'][1::2][i*2+1][0].data[:]
-    voltage[:, curr_index_0] = df.loc[curr_index_0*2][0][0].data[:]    # Find voltage trace for 0 current stimulation
-    return time, voltage, current, curr_index_0
-
-
-def plot_volatge(voltage):
-    plt.plot(voltage[:,pick_voltage])    
-    plt.gca().spines['right'].set_visible(False)
-    plt.gca().spines['top'].set_visible(False)    
-    plt.show
-
-
-def embed_z(z, n_neighbors, min_dist):
-    reducer = umap.UMAP(n_neighbors=n_neighbors, min_dist=min_dist)
-    z_embed = reducer.fit_transform(z.cpu().detach().numpy())
-    return(z_embed)
 
 
 def split_dataset(dataset,test_ratio,val_ratio):
@@ -128,6 +114,7 @@ def split_dataset(dataset,test_ratio,val_ratio):
   val_x = torch.stack(t_val, dim = 0)
   val_xcell_id = torch.stack(e_val, dim = 0)
   return(val_x, val_xcell_id, val_xcell_names)
+
 
 def celltype_list(cell_list):
   cell_data = adata[cell_list]
@@ -153,12 +140,6 @@ def celltype_list(cell_list):
   return(Vip, Lamp5, Pvalb, Sst, ET, IT, CT)
 
 
-def GetMedoid(vX):
-  vMean = np.mean(vX, axis=0)
-  min_number = np.argmin([sum((x - vMean)**2) for x in vX])
-  return vX[min_number], min_number  
-
-
 def average_expression(adata, cell_type):
   gene_sum = torch.zeros(count_mat.size()[1])
   counts = 0
@@ -176,7 +157,7 @@ def average_expression(adata, cell_type):
 
 def calc_lpips(adata, validlist, path, sample_path):  
   loss_fn_alex = lpips.LPIPS(net='alex')
-  VAE_list, baseline_list = [], []
+  vae_list, baseline_list = [], []
   for valid_sample in validlist:
       read_image = np.load(path + valid_sample +  ".npy")
       right_image = read_image.reshape(np.load(sample_path).shape)
@@ -189,22 +170,22 @@ def calc_lpips(adata, validlist, path, sample_path):
       predicted_image = test_image.reshape(np.load(sample_path).shape)
       predict_sum = torch.sum(predicted_image)
 
-      LPIPS_vae = loss_fn_alex(right_image,predicted_image)
-      VAE_list.append(LPIPS_vae)
-      LPIPS_baseline = loss_fn_alex(right_image,rightimage_avr)
-      baseline_list.append(LPIPS_baseline)
-  return(VAE_list, baseline_list)
+      lpips_vae = loss_fn_alex(right_image,predicted_image)
+      vae_list.append(lpips_vae)
+      lpips_baseline = loss_fn_alex(right_image,rightimage_avr)
+      baseline_list.append(lpips_baseline)
+  return(vae_list, baseline_list)
 
 
-def inverse_analysis(avr_express, N, image_shape):
+def inverse_analysis(avr_express, N, image_shape, pick_num=0):
   image_size = image_shape[0] * image_shape[1]
   I_use = torch.eye(image_size,image_size)
   _, fn_vjp = vjp(lambda vx:LincSpectr(vx), avr_express)
   jacobian_mat, = vmap(fn_vjp)(I_use)
   u, s, vh = torch.linalg.svd(jacobian_mat)
-  u_pick = u[:,0]
+  u_pick = u[:,pick_num]
   vT = torch.conj(vh)
-  v_pick = vT[0]
+  v_pick = vT[pick_num]
   v_pick = v_pick.to('cpu').detach().numpy().copy()
   top_genes = []
   for i in range(N):
@@ -226,7 +207,7 @@ def kmeans_cluster(embedding):
 
 
 def make_umap(z, n_neighbors=15, min_dist=0.01):
-    reducer = umap.UMAP(n_neighbors,min_dist)
-    embedding = reducer.fit_transform(z.cpu().detach().numpy())
-    sns.scatterplot(x = embedding[:,0],y = embedding[:,1],hue=adata.obs['RNA family'])
-    plt.legend(loc='upper left',bbox_to_anchor=(1.0,1.0))
+  reducer = umap.UMAP(n_neighbors,min_dist)
+  embedding = reducer.fit_transform(z.cpu().detach().numpy())
+  sns.scatterplot(x = embedding[:,0],y = embedding[:,1],hue=adata.obs['RNA family'])
+  plt.legend(loc='upper left',bbox_to_anchor=(1.0,1.0))
