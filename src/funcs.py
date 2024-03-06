@@ -1,6 +1,5 @@
 import torch.distributions as dist
 
-
 def calc_kld(qz):
     kld = -0.5*(1 + qz.scale.pow(2).log() - qz.loc.pow(2) - qz.scale.pow(2))
     return(kld)
