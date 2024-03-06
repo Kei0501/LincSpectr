@@ -1,7 +1,7 @@
 import torch
 from modules import TscVAE, EscVAE, Linker
 from funcs import t_elbo_loss, e_elbo_loss
-from dataset import VaeDataManager, ZDataManager
+from dataset import VaeDataSet, ZDataSet
 import numpy as np
 
 class TscVaeExperiment:
