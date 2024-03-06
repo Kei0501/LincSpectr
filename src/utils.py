@@ -193,6 +193,52 @@ def make_umap(z, n_neighbors=15, min_dist=0.01):
   plt.legend(loc='upper left',bbox_to_anchor=(1.0,1.0))
 
 
+def load_realimg(cell_idx):
+    real_image = np.load(cell_idx)
+    real_image = np.array(Image.fromarray(real_image).resize((set_timeax,set_freqax)))
+    return(real_image)
+
+
+def predict_img(cell_idx,sample_file):
+    testdata = adata[cell_name]
+    testcount_mat = torch.Tensor(testdata[testdata.obs_names,testdata.var.highly_variable].layers['count'].toarray())
+    testcount_mat = testcount_mat.squeeze()
+    test_image = LincSpectr(testcount_mat)
+    reshape_image = test_image.reshape(np.load(sample_file).shape)
+    predicted_image = reshape_image.to('cpu').detach().numpy().copy()
+    return(predicted_image)
+
+
+def show_prediction(cell_name1, cell_name2):
+    fig = plt.figure()
+    X = 2
+    Y = 2
+
+    imgplot = 1
+    ax1 = fig.add_subplot(X, Y, imgplot)
+    check_image = load_realimg(cell_name1)
+    ax1.set_title("real_1",fontsize=10)
+    plt.imshow(check_image, aspect='auto', cmap='turbo', vmin=0)
+
+    imgplot = 2
+    ax1 = fig.add_subplot(X, Y, imgplot)
+    predicted_image = predict_img(cell_name1)
+    ax1.set_title("predict_1",fontsize=10)
+    plt.imshow(predicted_image, aspect='auto', cmap='turbo', vmin=0)
+
+    imgplot = 3
+    ax1 = fig.add_subplot(X, Y, imgplot)
+    check_image2 = load_realimg(cell_name2)
+    ax1.set_title("real_2",fontsize=10)
+    plt.imshow(check_image2, aspect='auto', cmap='turbo', vmin=0)
+
+    img2plot =  4
+    ax2 = fig.add_subplot(X, Y, img2plot)
+    predicted_image2 = predict_img(cell_name2)
+    ax2.set_title("predict_2",fontsize=10)
+    plt.imshow(predicted_image2, aspect='auto', cmap='turbo', vmin=0)
+
+
 def calc_lpips(adata, validlist, path, sample_path):  
   loss_fn_alex = lpips.LPIPS(net='alex')
   vae_list, baseline_list = [], []
