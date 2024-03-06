@@ -3,28 +3,22 @@ from dataset import VaeDataSet, ZDataSet
 from modules import TscVAE, EscVAE, Linker
 from funcs import t_elbo_loss, e_elbo_loss
 
-#input path & adata
 file_names = collect_filename("./data_for_VAE/*")
 cell_list = collect_cellname(file_names)
 count_mat, cell_id = make_features(adata, './data_for_VAE/*.npy', './data_for_VAE/', "VAE/([^.]+)")
-
 set_timeax = 128
 set_freqax = 128
 dataset = VaeDataSet(count_mat, cell_id)
 val_x, val_xcell_id, val_xcell_names = split_dataset(dataset)
 
-x_dim = count_mat.size()[1]
-xz_dim, enc_z_h_dim, dec_z_h_dim, num_enc_z_layers, num_dec_z_layers = 10, 50, 50, 2, 2
 # tVAE training
-#torch.set_default_tensor_type('torch.cuda.FloatTensor')
-t_vae = TscVAE(x_dim, xz_dim, enc_z_h_dim, dec_z_h_dim, num_enc_z_layers, num_dec_z_layers)
-batch_size = 16
+x_dim = count_mat.size()[1]
+t_vae = TscVAE(x_dim, xz_dim=10, enc_z_h_dim=50, dec_z_h_dim=50, num_enc_z_layers=2, num_dec_z_layers=2)
 epoch_num = 350
-lr = 4.0e-3
-loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=True)
+loader = torch.utils.data.DataLoader(train_dataset, batch_size=16, shuffle=True, pin_memory=True)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 t_vae.to(device)
-optimizer = torch.optim.Adam(t_vae.parameters(), lr=lr)
+optimizer = torch.optim.Adam(t_vae.parameters(), lr=4.0e-3)
 
 for epoch in tqdm(range(epoch_num)):
     tsc_vae.train()
@@ -44,19 +38,14 @@ for epoch in tqdm(range(epoch_num)):
             loss = t_elbo_loss(qz, ld, val_x)
             print(f'loss at epoch {epoch} is {loss}')
 
-i_dim = np.load(cell_id[0]).reshape(-1).shape[0]
-xz_dim, enc_z_h_dim, dec_z_h_dim, num_enc_z_layers, num_dec_z_layers = 10, 500, 500, 2, 2
-
 # eVAE training
-#torch.set_default_tensor_type('torch.cuda.FloatTensor')
-e_vae = EscVAE(i_dim, xz_dim, enc_z_h_dim, dec_z_h_dim, num_enc_z_layers, num_dec_z_layers)
-batch_size = 16
+i_dim = np.load(cell_id[0]).reshape(-1).shape[0]
+e_vae = EscVAE(i_dim, xz_dim=10, enc_z_h_dim=500, dec_z_h_dim=500, num_enc_z_layers=2, num_dec_z_layers=2)
 epoch_num = 300
-lr = 1.0e-4
-loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=True)
+loader = torch.utils.data.DataLoader(train_dataset, batch_siz=16, shuffle=True, pin_memory=True)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 e_vae.to(device)
-optimizer = torch.optim.Adam(e_vae.parameters(), lr=lr)
+optimizer = torch.optim.Adam(e_vae.parameters(), lr=1.0e-4)
 
 for epoch in tqdm(range(epoch_num)):
     e_vae.train()
@@ -83,13 +72,11 @@ train_tz, train_ez, train_zname = split_dataset(train_zdataset,test_ratio, val_r
 
 # connection model training
 linkz_model = Linker(latent_dim=10)
-batch_size = 512
 epoch_num = 350
-lr = 1.0e-4
-z_loader = torch.utils.data.DataLoader(train_zdataset, batch_size=batch_size, shuffle=True, pin_memory=True)
+z_loader = torch.utils.data.DataLoader(train_zdataset, batch_size=512, shuffle=True, pin_memory=True)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 linkz_model.to(device)
-optimizer = torch.optim.Adam(linkz_model.parameters(), lr=lr)
+optimizer = torch.optim.Adam(linkz_model.parameters(), lr=1.0e-4)
 
 for epoch in tqdm(range(epoch_num)):
     linkz_model.train()
@@ -113,6 +100,7 @@ for epoch in tqdm(range(epoch_num)):
             loss = lp.sum()
             print(f'loss at epoch {epoch} is {loss}')
 
+#Visualize latent space
 t_test, e_test = [], []
 for i in range(len(dataset)):
     t_test.append(dataset[i][0])
