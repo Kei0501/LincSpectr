@@ -115,6 +115,7 @@ def split_dataset(dataset,test_ratio,val_ratio):
   val_xcell_id = torch.stack(e_val, dim = 0)
   return(val_x, val_xcell_id, val_xcell_names)
 
+
 def make_validlist(val_xcell_names):
   valid_list = []
   for val_cell in val_xcell_names:
@@ -123,6 +124,7 @@ def make_validlist(val_xcell_names):
           valname = valname.rstrip(".")  
       valid_list.append(valname)
   return(valid_list)
+
 
 def celltype_list(cell_list):
   cell_data = adata[cell_list]
