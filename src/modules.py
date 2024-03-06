@@ -161,7 +161,7 @@ class EscVAE(nn.Module):
         return(z, qz, ld_img)
 
 
-class Distributor(nn.Module):
+class Linker(nn.Module):
     def __init__(self, latent_dim: int, h_dim: int = 64) -> None:
         super().__init__()
         self.zk2w = nn.Linear(latent_dim, h_dim)
@@ -176,14 +176,14 @@ class Distributor(nn.Module):
         lp = -self.logsoftmax(w_i @ w_z.T + b_z)
         return lp
 
-    def inference(self, t_z, val_ez_train=val_ez_train, val_ez = val_ez):
-        w_i = self.zk2w(val_ez_train)
+    def inference(self, t_z, train_ez = train_ez, val_ez = val_ez):
+        w_i = self.zk2w(train_ez)
         wb_z = self.zl2wb(t_z)
         w_z, b_z = wb_z[..., :-1], wb_z[..., -1]
         calc_z = w_i @ w_z.T + b_z
         calc_z3 = calc_z * 3
         best_z = self.softmax(calc_z3)
-        best_ez = val_ez_train.T @ best_z
+        best_ez = train_ez.T @ best_z
         return  best_ez
 
 
