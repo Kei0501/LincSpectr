@@ -1,6 +1,7 @@
 import utils
-import dataset
-import modules
+from dataset import VaeDataSet, ZDataSet
+from modules import TscVAE, EscVAE, Linker
+from funcs import t_elbo_loss, e_elbo_loss
 
 #input path & adata
 file_names = collect_filename("./data_for_VAE/*")
