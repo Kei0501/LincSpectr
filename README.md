@@ -12,6 +12,7 @@ Developed by Kazuki Furumichi
 You can use the latest development version from GitHub.
 
 !git clone !git clone https://github.com/Kei0501/LincSpectr
+
 #Usage
 
 
