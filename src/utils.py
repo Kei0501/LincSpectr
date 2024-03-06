@@ -165,13 +165,15 @@ def inverse_analysis(avr_express, N, image_shape, pick_num=0):
   vT = torch.conj(vh)
   v_pick = vT[pick_num]
   v_pick = v_pick.to('cpu').detach().numpy().copy()
-  top_genes = []
+  top_genes, top_expression = [], []
   for i in range(N):
       j = i + 1
       gene_pos_number = np.where(v_pick==np.sort(v_pick)[-j])[0][0]
       top_genename = adata[adata.obs_names,adata.var.highly_variable].var_names[gene_pos_number]
+      gene_count = v_pick[gene_pos_number]
       top_genes.append(top_genename)
-  return(u_pick, v_pick, top_genes)
+      top_expression.append(gene_count)
+  return(u_pick, top_genes, top_expression)
 
 
 def make_umap(z, n_neighbors=15, min_dist=0.01):
