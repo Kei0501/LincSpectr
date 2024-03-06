@@ -34,8 +34,8 @@ class ZDataSet(torch.utils.data.Dataset):
       
     def __getitem__(self,idx):
         idx_x = self.x[idx]
-        qz_mu, qz_logvar = t_model.enc_z(idx_x)
-        qz_logvar = t_model.softplus(qz_logvar)
+        qz_mu, qz_logvar = t_vae.enc_z(idx_x)
+        qz_logvar = t_vae.softplus(qz_logvar)
         qz = dist.Normal(qz_mu, qz_logvar)
         t_z = qz.rsample()
         idx_xcell_id = np.load(self.xcell_id[idx])
