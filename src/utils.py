@@ -108,3 +108,19 @@ def embed_z(z, n_neighbors, min_dist):
     reducer = umap.UMAP(n_neighbors=n_neighbors, min_dist=min_dist)
     z_embed = reducer.fit_transform(z.cpu().detach().numpy())
     return(z_embed)
+
+
+def split_dataset(dataset,test_ratio,val_ratio):
+  total_size = len(dataset)
+  test_size = int(total_size * test_ratio)
+  val_size = int(total_size * val_ratio)
+  train_size = total_size - test_size - val_size
+  train_dataset,val_dataset,test_dataset = torch.utils.data.dataset.random_split(dataset,[train_size,val_size,test_size],generator=torch.Generator().manual_seed(42))
+  t_val, e_val, val_xcell_names = [], [], []
+  for i in range(len(val_dataset)):
+      t_val.append(val_dataset[i][0])
+      e_val.append(val_dataset[i][1])
+      val_xcell_names.append(val_dataset[i][2])
+  val_x = torch.stack(t_val, dim = 0)
+  val_xcell_id = torch.stack(e_val, dim = 0)
+  return(val_x, val_xcell_id, val_xcell_names)
