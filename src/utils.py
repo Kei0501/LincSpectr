@@ -47,7 +47,7 @@ def get_time_voltage_current_currindex0(nwb):
     return time, voltage, current, curr_index_0
 
 
-def transform_efeatures(save_path, pick_voltage=30, set_timeax=128, set_freqax=128, set_parameter=1131, cut_freq=230, start_frame=75, end_frame=20000):
+def transform_efeatures(file_names, save_path, pick_voltage=30, set_timeax=128, set_freqax=128, set_parameter=1131, cut_freq=230, start_frame=75, end_frame=20000):
   warnings.filterwarnings("ignore") # It complains about some namespaces, but it should work.
   io_ = NWBHDF5IO(file_names[set_parameter], 'r', load_namespaces=True)
   nwb = io_.read()
