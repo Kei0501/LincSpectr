@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+import torch.distributions as dist
 
 class VaeDataSet(torch.utils.data.Dataset):
     def __init__(self,x,xcell_id,transform=None,pre_transform=None):
