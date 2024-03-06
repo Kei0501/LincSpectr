@@ -6,6 +6,8 @@ from ssqueezepy import ssq_cwt
 import pandas as pd
 import torch
 import umap
+from functorch import vmap
+from functorch import vjp
 
 def collect_filename(path):
   folders = glob.glob(path)
@@ -124,3 +126,87 @@ def split_dataset(dataset,test_ratio,val_ratio):
   val_x = torch.stack(t_val, dim = 0)
   val_xcell_id = torch.stack(e_val, dim = 0)
   return(val_x, val_xcell_id, val_xcell_names)
+
+def celltype_list(cell_list):
+  cell_data = adata[cell_list]
+  Vip, Lamp5, Pvalb, Sst, ET, IT, CT = [], [], [], [], [], [], []
+  
+  for i in range(len(valid_data.obs)):
+      if cell_data.obs["RNA family"][i] == "Vip":
+          Vip.append(cell_data.obs_names[i])
+      if cell_data.obs["RNA family"][i] == "Lamp5":
+          Lamp5.append(cell_data.obs_names[i])
+      if cell_data.obs["RNA family"][i] == "Pvalb":
+          Pvalb.append(cell_data.obs_names[i])
+      if cell_data.obs["RNA family"][i] == "Sst":
+          Sst.append(cell_data.obs_names[i])
+      if cell_data.obs["RNA family"][i] == "ET":
+          ET.append(cell_data.obs_names[i])
+      if cell_data.obs["RNA family"][i] == "IT":
+          IT.append(cell_data.obs_names[i])
+      if cell_data.obs["RNA family"][i] == "CT":
+          CT.append(cell_data.obs_names[i])
+      else:
+          continue
+  return(Vip, Lamp5, Pvalb, Sst, ET, IT, CT)
+
+
+def GetMedoid(vX):
+  vMean = np.mean(vX, axis=0)
+  min_number = np.argmin([sum((x - vMean)**2) for x in vX])
+  return vX[min_number], min_number  
+
+
+def average_expression(adata, cell_type):
+  gene_sum = torch.zeros(count_mat.size()[1])
+  counts = 0
+  for i in range(len(adata.obs)):
+      if adata.obs["RNA family"][i] == cell_type:
+          obsname = adata.obs_names[i]
+          bdata = adata[obsname]
+          pick_count = torch.Tensor(adata[bdata.obs_names,bdata.var.highly_variable].layers['count'].toarray())
+          pick_count = pick_count.squeeze()
+          gene_sum = gene_sum + pick_count
+          counts = counts + 1
+  avr_express = torch.div(gene_sum,counts)
+  return(avr_express)
+
+
+def calc_lpips(adata, validlist, path, sample_path):  
+  VAE_list, baseline_list = [], []
+  for valid_sample in validlist:
+      read_image = np.load(path + valid_sample +  ".npy")
+      right_image = read_image.reshape(np.load(sample_path).shape)
+      right_image = torch.from_numpy(right_image.astype(np.float32)).clone()
+      right_sum = torch.sum(right_image)
+      testdata = adata[valid_sample]
+      testcount_mat = torch.Tensor(testdata[testdata.obs_names,testdata.var.highly_variable].layers['count'].toarray())
+      testcount_mat = torch.ravel(testcount_mat)
+      test_image = LincSpectr(testcount_mat)
+      predicted_image = test_image.reshape(np.load(sample_path).shape)
+      predict_sum = torch.sum(predicted_image)
+
+      LPIPS_vae = loss_fn_alex(right_image,predicted_image)
+      VAE_list.append(LPIPS_vae)
+      LPIPS_baseline = loss_fn_alex(right_image,rightimage_avr)
+      baseline_list.append(LPIPS_baseline)
+  return(VAE_list, baseline_list)
+
+
+def inverse_analysis(avr_express, N, image_shape):
+  image_size = image_shape[0] * image_shape[1]
+  I_use = torch.eye(image_size,image_size)
+  _, fn_vjp = vjp(lambda vx:LincSpectr(vx), avr_express)
+  jacobian_mat, = vmap(fn_vjp)(I_use)
+  u, s, vh = torch.linalg.svd(jacobian_mat)
+  u_pick = u[:,0]
+  vT = torch.conj(vh)
+  v_pick = vT[0]
+  v_pick = v_pick.to('cpu').detach().numpy().copy()
+  top_genes = []
+  for i in range(N):
+      j = i + 1
+      gene_pos_number = np.where(v_pick==np.sort(v_pick)[-j])[0][0]
+      top_genename = adata[adata.obs_names,adata.var.highly_variable].var_names[gene_pos_number]
+      top_genes.append(top_genename)
+  return(u_pick, v_pivk, top_genes)
