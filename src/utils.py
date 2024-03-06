@@ -8,6 +8,8 @@ import torch
 import umap
 from functorch import vmap
 from functorch import vjp
+import lpips
+from sklearn.cluster import KMeans
 
 def collect_filename(path):
   folders = glob.glob(path)
@@ -173,6 +175,7 @@ def average_expression(adata, cell_type):
 
 
 def calc_lpips(adata, validlist, path, sample_path):  
+  loss_fn_alex = lpips.LPIPS(net='alex')
   VAE_list, baseline_list = [], []
   for valid_sample in validlist:
       read_image = np.load(path + valid_sample +  ".npy")
@@ -210,3 +213,13 @@ def inverse_analysis(avr_express, N, image_shape):
       top_genename = adata[adata.obs_names,adata.var.highly_variable].var_names[gene_pos_number]
       top_genes.append(top_genename)
   return(u_pick, v_pivk, top_genes)
+
+
+def kmeans_cluster(embedding):
+  cluster_data = pd.DataFrame(embedding)
+  km = KMeans(n_clusters=7, max_iter=30)
+  kmh = km.fit_predict(embedding)
+  cluster_data['kmh'] = kmh
+  for i in np.sort(cluster_data['kmh'].unique()):
+      plt.scatter(cluster_data[cluster_data['kmh']==i][0], cluster_data[cluster_data['kmh']==i][1], label=f'cluster{i}')
+  plt.legend()
