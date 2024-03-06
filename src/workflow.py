@@ -17,21 +17,21 @@ x_dim = count_mat.size()[1]
 xz_dim, enc_z_h_dim, dec_z_h_dim, num_enc_z_layers, num_dec_z_layers = 10, 50, 50, 2, 2
 # tVAE training
 #torch.set_default_tensor_type('torch.cuda.FloatTensor')
-t_model = TscVAE(x_dim, xz_dim, enc_z_h_dim, dec_z_h_dim, num_enc_z_layers, num_dec_z_layers)
+t_vae = TscVAE(x_dim, xz_dim, enc_z_h_dim, dec_z_h_dim, num_enc_z_layers, num_dec_z_layers)
 batch_size = 16
 epoch_num = 350
 lr = 4.0e-3
 loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=True)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-t_model.to(device)
-optimizer = torch.optim.Adam(t_model.parameters(), lr=lr)
+t_vae.to(device)
+optimizer = torch.optim.Adam(t_vae.parameters(), lr=lr)
 
 for epoch in tqdm(range(epoch_num)):
-    t_model.train()
+    tsc_vae.train()
     for x, xcell_id, xcell_names in loader:
         x = x.to(device)
         optimizer.zero_grad()
-        z, qz, ld =  t_model(x)
+        z, qz, ld =  t_vae(x)
         loss = t_elbo_loss(qz, ld, x)
         loss.backward()
         optimizer.step()
@@ -39,8 +39,8 @@ for epoch in tqdm(range(epoch_num)):
     if epoch % 10 == 0:
         with torch.no_grad():
             val_x = val_x.to(device)
-            t_model.eval()
-            z, qz, ld =  t_model(val_x)
+            t_vae.eval()
+            z, qz, ld =  t_vae(val_x)
             loss = t_elbo_loss(qz, ld, val_x)
             print(f'loss at epoch {epoch} is {loss}')
 
@@ -49,21 +49,21 @@ xz_dim, enc_z_h_dim, dec_z_h_dim, num_enc_z_layers, num_dec_z_layers = 10, 500, 
 
 # eVAE training
 #torch.set_default_tensor_type('torch.cuda.FloatTensor')
-e_model = EscVAE(i_dim, xz_dim, enc_z_h_dim, dec_z_h_dim, num_enc_z_layers, num_dec_z_layers)
+e_vae = EscVAE(i_dim, xz_dim, enc_z_h_dim, dec_z_h_dim, num_enc_z_layers, num_dec_z_layers)
 batch_size = 16
 epoch_num = 300
 lr = 1.0e-4
 loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=True)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-e_model.to(device)
-optimizer = torch.optim.Adam(e_model.parameters(), lr=lr)
+e_vae.to(device)
+optimizer = torch.optim.Adam(e_vae.parameters(), lr=lr)
 
 for epoch in tqdm(range(epoch_num)):
-    e_model.train()
+    e_vae.train()
     for x, xcell_id, xcell_names in loader:
         xcell_id = xcell_id.to(device)
         optimizer.zero_grad()
-        z, qz, ld_img =  e_model(xcell_id.view(-1, set_timeax*set_freqax))
+        z, qz, ld_img =  e_vae(xcell_id.view(-1, set_timeax*set_freqax))
         loss = e_elbo_loss(qz, ld_img, xcell_id.view(ld_img.size()))
         loss.backward()
         optimizer.step()
@@ -71,8 +71,8 @@ for epoch in tqdm(range(epoch_num)):
     if epoch % 10 == 0:
         with torch.no_grad():
             val_xcell_id = val_xcell_id.to(device)
-            e_model.eval()
-            z, qz, ld_img =  e_model(val_xcell_id.view(-1, set_timeax*set_freqax))
+            e_vae.eval()
+            z, qz, ld_img =  e_vae(val_xcell_id.view(-1, set_timeax*set_freqax))
             loss = e_elbo_loss(qz, ld_img, val_xcell_id.view(ld_img.size()))
             print(f'loss at epoch {epoch} is {loss}')
 
@@ -113,23 +113,23 @@ for epoch in tqdm(range(epoch_num)):
             loss = lp.sum()
             print(f'loss at epoch {epoch} is {loss}')
 
+t_test, e_test = [], []
+for i in range(len(dataset)):
+    t_test.append(dataset[i][0])
+    e_test.append(dataset[i][1])
+test_x = torch.stack(t_test, dim = 0)
+test_xcell_id = torch.stack(e_test, dim = 0)
+test_x = test_x.to(device)
+test_xcell_id = test_xcell_id.to(device)
 
-def make_umap(dataset):
-    t_test, e_test = [], []
-    for i in range(len(dataset)):
-        t_test.append(dataset[i][0])
-        e_test.append(dataset[i][1])
-    test_x = torch.stack(t_test, dim = 0)
-    test_xcell_id = torch.stack(e_test, dim = 0)
-    test_x = test_x.to(device)
-    test_xcell_id = test_xcell_id.to(device)
-    e_model.to(device)
-    with torch.no_grad():
-        e_model.eval()
-        z, qz, ld_img = e_model(test_xcell_id.view(-1,set_timeax*set_freqax))
-    
-    reducer = umap.UMAP(n_neighbors=15,min_dist=0.01)
-    embedding = reducer.fit_transform(z.cpu().detach().numpy())
-    
-    sns.scatterplot(x = embedding[:,0],y = embedding[:,1],hue=adata.obs['RNA family'])
-    plt.legend(loc='upper left',bbox_to_anchor=(1.0,1.0))
+t_vae.to(device)
+with torch.no_grad():
+    t_vae.eval()
+    tz, qz, xld = t_model(test_x)
+make_umap(tz)
+
+e_vae.to(device)
+with torch.no_grad():
+    e_vae.eval()
+    ez, qz, ld_img = t_vae(test_xcell_id.view(-1,set_timeax*set_freqax))
+make_umap(ez)
