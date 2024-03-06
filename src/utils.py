@@ -7,7 +7,7 @@ import pandas as pd
 import torch
 import umap
 
-def collact_filename(path):
+def collect_filename(path):
   folders = glob.glob(path)
   file_names = []
   for folder in folders:
