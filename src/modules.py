@@ -7,7 +7,6 @@ from torch.distributions.kl import kl_divergence
 from torch.nn import init
 import numpy as np
 
-
 class LinearReLU(nn.Module):
     def __init__(self, input_dim, output_dim):
         super(LinearReLU, self).__init__()
@@ -188,10 +187,10 @@ class Linker(nn.Module):
 
 
 def LincSpectr(tfeatures):
-    qz_mu, qz_logvar = tscVAE.enc_z(tfeatures)
-    qz_logvar = tscVAE.softplus(qz_logvar)
+    qz_mu, qz_logvar = t_vae.enc_z(tfeatures)
+    qz_logvar = t_vae.softplus(qz_logvar)
     qz = dist.Normal(qz_mu, qz_logvar)
     z_t = qz.rsample()
-    z_e = linker.inference(z_t)
-    efeatures = escVAE.dec_z2x(z_e)
+    z_e = linkz_model.inference(z_t)
+    efeatures = e_vae.dec_z2x(z_e)
     return(efeatures)
