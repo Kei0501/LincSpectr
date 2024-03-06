@@ -10,6 +10,7 @@ set_timeax = 128
 set_freqax = 128
 dataset = VaeDataSet(count_mat, cell_id)
 val_x, val_xcell_id, val_xcell_names = split_dataset(dataset)
+valid_list = make_validlist(val_xcell_names)
 
 # tVAE training
 x_dim = count_mat.size()[1]
