@@ -99,25 +99,3 @@ for epoch in tqdm(range(epoch_num)):
             lp = torch.diag(lp,0)
             loss = lp.sum()
             print(f'loss at epoch {epoch} is {loss}')
-
-#Visualize latent space
-t_test, e_test = [], []
-for i in range(len(dataset)):
-    t_test.append(dataset[i][0])
-    e_test.append(dataset[i][1])
-test_x = torch.stack(t_test, dim = 0)
-test_xcell_id = torch.stack(e_test, dim = 0)
-test_x = test_x.to(device)
-test_xcell_id = test_xcell_id.to(device)
-
-t_vae.to(device)
-with torch.no_grad():
-    t_vae.eval()
-    tz, qz, xld = t_model(test_x)
-make_umap(tz)
-
-e_vae.to(device)
-with torch.no_grad():
-    e_vae.eval()
-    ez, qz, ld_img = t_vae(test_xcell_id.view(-1,set_timeax*set_freqax))
-make_umap(ez)
