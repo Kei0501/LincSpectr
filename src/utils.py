@@ -223,3 +223,10 @@ def kmeans_cluster(embedding):
   for i in np.sort(cluster_data['kmh'].unique()):
       plt.scatter(cluster_data[cluster_data['kmh']==i][0], cluster_data[cluster_data['kmh']==i][1], label=f'cluster{i}')
   plt.legend()
+
+
+def make_umap(z, n_neighbors=15, min_dist=0.01):
+    reducer = umap.UMAP(n_neighbors,min_dist)
+    embedding = reducer.fit_transform(z.cpu().detach().numpy())
+    sns.scatterplot(x = embedding[:,0],y = embedding[:,1],hue=adata.obs['RNA family'])
+    plt.legend(loc='upper left',bbox_to_anchor=(1.0,1.0))
