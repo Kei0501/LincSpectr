@@ -193,7 +193,7 @@ def inverse_analysis(avr_express, N, image_shape, pick_num=0):
       gene_pos_number = np.where(v_pick==np.sort(v_pick)[-j])[0][0]
       top_genename = adata[adata.obs_names,adata.var.highly_variable].var_names[gene_pos_number]
       top_genes.append(top_genename)
-  return(u_pick, v_pivk, top_genes)
+  return(u_pick, v_pick, top_genes)
 
 
 def kmeans_cluster(embedding):
