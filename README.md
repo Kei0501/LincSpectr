@@ -8,10 +8,10 @@ Yasuhiro Kojima's lab, National Cancer Center Research Institute at Tokyo
 
 Developed by Kazuki Furumichi
 
-# Instalation
+# Installation
 You can use the latest development version from GitHub.
 
-!git clone !git clone https://github.com/Kei0501/LincSpectr
+!git clone https://github.com/Kei0501/LincSpectr
 
 # Usage
 
