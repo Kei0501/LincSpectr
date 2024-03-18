@@ -7,7 +7,6 @@ import torch
 import umap
 from functorch import vmap
 from functorch import vjp
-import lpips
 from sklearn.cluster import KMeans
 
 def collect_filename(path):
