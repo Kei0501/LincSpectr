@@ -175,7 +175,7 @@ class Linker(nn.Module):
         lp = -self.logsoftmax(w_i @ w_z.T + b_z)
         return lp
 
-    def inference(self, t_z, train_ez = train_ez, val_ez = val_ez):
+    def inference(self, t_z, train_ez, val_ez):
         w_i = self.zk2w(train_ez)
         wb_z = self.zl2wb(t_z)
         w_z, b_z = wb_z[..., :-1], wb_z[..., -1]
