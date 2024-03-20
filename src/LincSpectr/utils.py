@@ -3,6 +3,7 @@ import numpy as np
 from pynwb import NWBHDF5IO
 from ssqueezepy import ssq_cwt
 import warnings
+warnings.simplefilter('ignore', DeprecationWarning)
 import pandas as pd
 import torch
 %matplotlib inline
