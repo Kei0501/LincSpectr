@@ -16,5 +16,5 @@ You can use the latest development version from GitHub.
 ```
 
 # Usage
-
+You need to prepare AnnData objects which includes raw count matrix of gene expression for single cell and CWT transformed electrophysiological data respectively. You can see the usage in IPython Notebook.
 
