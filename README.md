@@ -1,6 +1,7 @@
 # LincSpectr(Deep-Learning model integrating single cell Specific time-frequency electrophysiological characteristics and transcriptomes)
 
-LincSpectr is a deep generative model interpretably linking single-cell time-frequency transformed electrophysiological features to transcriptomes.
+LincSpectr is a deep generative model interpretably integrating single-cell time-frequency characteristics transformed from electrophysiological data with transcriptomic features.
+
 
 Teppei Shimamura's lab, Tokyo Medical and Dental university at Tokyo and Nagoya University at Nagoya
 
