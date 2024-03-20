@@ -11,7 +11,7 @@ Developed by Kazuki Furumichi
 # Installation
 You can use the latest development version from GitHub.
 
-!git clone https://github.com/Kei0501/LincSpectr
+(!git clone https://github.com/Kei0501/LincSpectr)
 
 # Usage
 
