@@ -2,9 +2,13 @@ import glob
 import numpy as np
 from pynwb import NWBHDF5IO
 from ssqueezepy import ssq_cwt
+import warnings
 import pandas as pd
 import torch
-import umap
+%matplotlib inline
+from matplotlib import pyplot as plt
+import seaborn as sns
+from PIL import Image
 from functorch import vmap
 from functorch import vjp
 from sklearn.cluster import KMeans
@@ -17,6 +21,7 @@ def collect_filename(path):
       for file in files:
           file_names.append(file)
   return(file_names)
+
 
 def collect_cellname(file_names):
   cell_list = []
@@ -45,7 +50,7 @@ def get_time_voltage_current_currindex0(nwb):
     return time, voltage, current, curr_index_0
 
 
-def transform_efeatures(file_names, save_path, pick_voltage=30, set_timeax=128, set_freqax=128, set_parameter=1131, cut_freq=230, start_frame=75, end_frame=20000):
+def transform_efeatures(file_names, save_path, cell_list, pick_voltage=30, set_timeax=128, set_freqax=128, set_parameter=1131, cut_freq=230, start_frame=75, end_frame=20000):
   warnings.filterwarnings("ignore") # It complains about some namespaces, but it should work.
   io_ = NWBHDF5IO(file_names[set_parameter], 'r', load_namespaces=True)
   nwb = io_.read()
@@ -95,7 +100,7 @@ def make_features(adata, data_path, file_path, extract_part):
   cell_id = []
   for i in range(len(delete_cells)):
       cell_id.append(file_path + delete_cells[i] + '.npy')
-  return(count_mat, cell_id)
+  return(count_mat, cell_id, adata)
 
 
 def split_dataset(dataset,test_ratio,val_ratio):
@@ -111,7 +116,7 @@ def split_dataset(dataset,test_ratio,val_ratio):
       val_xcell_names.append(val_dataset[i][2])
   val_x = torch.stack(t_val, dim = 0)
   val_xcell_id = torch.stack(e_val, dim = 0)
-  return(val_x, val_xcell_id, val_xcell_names)
+  return(val_x, val_xcell_id, val_xcell_names,train_dataset,val_dataset,test_dataset)
 
 
 def make_validlist(val_xcell_names):
@@ -124,11 +129,11 @@ def make_validlist(val_xcell_names):
   return(valid_list)
 
 
-def celltype_list(cell_list):
+def celltype_list(adata,cell_list):
   cell_data = adata[cell_list]
   Vip, Lamp5, Pvalb, Sst, ET, IT, CT = [], [], [], [], [], [], []
   
-  for i in range(len(valid_data.obs)):
+  for i in range(len(cell_data.obs)):
       if cell_data.obs["RNA family"][i] == "Vip":
           Vip.append(cell_data.obs_names[i])
       if cell_data.obs["RNA family"][i] == "Lamp5":
@@ -148,7 +153,7 @@ def celltype_list(cell_list):
   return(Vip, Lamp5, Pvalb, Sst, ET, IT, CT)
 
 
-def average_expression(adata, cell_type):
+def average_expression(adata, count_mat, cell_type):
   gene_sum = torch.zeros(count_mat.size()[1])
   counts = 0
   for i in range(len(adata.obs)):
@@ -163,10 +168,10 @@ def average_expression(adata, cell_type):
   return(avr_express)
 
 
-def inverse_analysis(avr_express, N, image_shape, pick_num=0):
+def inverse_analysis(avr_express,adata,LincSpectr,t_vae,e_vae,linkz_model,train_ez,val_ez,N, image_shape, pick_num=0):
   image_size = image_shape[0] * image_shape[1]
   I_use = torch.eye(image_size,image_size)
-  _, fn_vjp = vjp(lambda vx:LincSpectr(vx), avr_express)
+  _, fn_vjp = vjp(lambda vx:LincSpectr(vx,t_vae,e_vae,linkz_model,train_ez,val_ez), avr_express)
   jacobian_mat, = vmap(fn_vjp)(I_use)
   u, s, vh = torch.linalg.svd(jacobian_mat)
   u_pick = u[:,pick_num]
@@ -184,30 +189,24 @@ def inverse_analysis(avr_express, N, image_shape, pick_num=0):
   return(u_pick, top_genes, top_expression)
 
 
-def make_umap(z, n_neighbors=15, min_dist=0.01):
-  reducer = umap.UMAP(n_neighbors,min_dist)
-  embedding = reducer.fit_transform(z.cpu().detach().numpy())
-  sns.scatterplot(x = embedding[:,0],y = embedding[:,1],hue=adata.obs['RNA family'])
-  plt.legend(loc='upper left',bbox_to_anchor=(1.0,1.0))
-
-
-def load_realimg(cell_idx):
+def load_realimg(cell_name,set_timeax=128,set_freqax=128):
+    cell_idx = './data_for_VAE/' + cell_name + '.npy'
     real_image = np.load(cell_idx)
     real_image = np.array(Image.fromarray(real_image).resize((set_timeax,set_freqax)))
     return(real_image)
 
 
-def predict_img(cell_idx,sample_file):
+def predict_img(adata,cell_name,sample_file,LincSpectr,t_vae,e_vae,linkz_model,train_ez,val_ez):
     testdata = adata[cell_name]
     testcount_mat = torch.Tensor(testdata[testdata.obs_names,testdata.var.highly_variable].layers['count'].toarray())
     testcount_mat = testcount_mat.squeeze()
-    test_image = LincSpectr(testcount_mat)
+    test_image = LincSpectr(testcount_mat,t_vae,e_vae,linkz_model,train_ez,val_ez)
     reshape_image = test_image.reshape(np.load(sample_file).shape)
     predicted_image = reshape_image.to('cpu').detach().numpy().copy()
     return(predicted_image)
 
 
-def show_prediction(cell_name1, cell_name2):
+def show_prediction(sample_file,cell_name1, cell_name2,adata,LincSpectr,t_vae,e_vae,linkz_model,train_ez,val_ez):
     fig = plt.figure()
     X = 2
     Y = 2
@@ -220,7 +219,7 @@ def show_prediction(cell_name1, cell_name2):
 
     imgplot = 2
     ax1 = fig.add_subplot(X, Y, imgplot)
-    predicted_image = predict_img(cell_name1)
+    predicted_image = predict_img(adata,cell_name1,sample_file,LincSpectr,t_vae,e_vae,linkz_model,train_ez,val_ez)
     ax1.set_title("predict_1",fontsize=10)
     plt.imshow(predicted_image, aspect='auto', cmap='turbo', vmin=0)
 
@@ -232,7 +231,7 @@ def show_prediction(cell_name1, cell_name2):
 
     img2plot =  4
     ax2 = fig.add_subplot(X, Y, img2plot)
-    predicted_image2 = predict_img(cell_name2)
+    predicted_image2 = predict_img(adata,cell_name2,sample_file,LincSpectr,t_vae,e_vae,linkz_model,train_ez,val_ez)
     ax2.set_title("predict_2",fontsize=10)
     plt.imshow(predicted_image2, aspect='auto', cmap='turbo', vmin=0)
 
