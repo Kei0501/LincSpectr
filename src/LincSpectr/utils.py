@@ -23,7 +23,7 @@ def collect_filename(path):
   return(file_names)
   
   
-  def collect_cellname(file_names):
+def collect_cellname(file_names):
   cell_list = []
   for cell in file_names:
       fixname = cell[45:53] + "_sample_" + cell[61:63]
