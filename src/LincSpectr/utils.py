@@ -3,10 +3,8 @@ import numpy as np
 from pynwb import NWBHDF5IO
 from ssqueezepy import ssq_cwt
 import warnings
-warnings.simplefilter('ignore', DeprecationWarning)
 import pandas as pd
 import torch
-%matplotlib inline
 from matplotlib import pyplot as plt
 import seaborn as sns
 from PIL import Image
@@ -17,14 +15,15 @@ from sklearn.cluster import KMeans
 def collect_filename(path):
   folders = glob.glob(path)
   file_names = []
-  for folder in folders:
-      files = glob.glob(folder + "/*")
-      for file in files:
-          file_names.append(file)
+  if switch == True:
+      for folder in folders:
+          files = glob.glob(folder + "/*")
+          for file in files:
+              file_names.append(file)
   return(file_names)
-
-
-def collect_cellname(file_names):
+  
+  
+  def collect_cellname(file_names):
   cell_list = []
   for cell in file_names:
       fixname = cell[45:53] + "_sample_" + cell[61:63]
