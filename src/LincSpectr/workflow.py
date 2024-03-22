@@ -22,8 +22,6 @@ sc.pp.normalize_total(adata,target_sum=1e4)
 sc.pp.log1p(adata)
 sc.pp.highly_variable_genes(adata,n_top_genes=2000)
 
-file_names = utils.collect_filename("./data_for_VAE/*")
-cell_list = utils.collect_cellname(file_names)
 count_mat, cell_id, adata = utils.make_features(adata, './data_for_VAE/*.npy', './data_for_VAE/', "VAE/([^.]+)")
 set_timeax = 128
 set_freqax = 128
